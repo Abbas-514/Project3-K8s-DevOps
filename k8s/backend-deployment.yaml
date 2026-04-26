@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calculator-backend
+  labels:
+    app: calculator-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calculator-backend
+  template:
+    metadata:
+      labels:
+        app: calculator-backend
+    spec:
+      containers:
+      - name: backend
+        image: docker.io/abbas514/backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000

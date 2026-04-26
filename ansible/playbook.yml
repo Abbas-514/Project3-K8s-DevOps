@@ -1,0 +1,77 @@
+- name: Setup Kubernetes Node (MicroK8s)
+  hosts: ec2
+  become: yes
+  gather_facts: no
+  serial: 1
+
+  tasks:
+
+    - name: Kill unattended-upgrades (prevent apt lock hang)
+      shell: |
+        systemctl stop unattended-upgrades || true
+        systemctl disable unattended-upgrades || true
+        pkill -f unattended || true
+      ignore_errors: yes
+
+    - name: Wait for apt lock release
+      shell: |
+        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+          sleep 5
+        done
+
+    - name: Gather facts
+      setup:
+
+    - name: Update apt packages safely
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Install dependencies
+      apt:
+        name:
+          - curl
+          - snapd
+        state: present
+        force_apt_get: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Ensure snapd is running
+      systemd:
+        name: snapd
+        state: started
+        enabled: yes
+
+    - name: Install MicroK8s
+      snap:
+        name: microk8s
+        classic: yes
+
+    - name: Wait for snap to settle
+      pause:
+        seconds: 60
+
+    - name: Add ubuntu user to microk8s group
+      user:
+        name: ubuntu
+        groups: microk8s
+        append: yes
+
+    - name: Wait for MicroK8s to be ready
+      shell: microk8s status --wait-ready
+      register: mk
+      retries: 20
+      delay: 15
+      until: mk.rc == 0
+
+    - name: Enable addons
+      shell: microk8s enable dns storage ingress
+
+    - name: Create kubectl alias
+      lineinfile:
+        path: /home/ubuntu/.bashrc
+        line: "alias kubectl='microk8s kubectl'"
+        create: yes
