@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: docker.io/abbas514/frontend:latest
+        image: abbas514/frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80
